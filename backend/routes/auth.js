@@ -13,16 +13,17 @@ router.post('/createuser', [
   body('email', 'Enter a valid Email').isEmail(),
   body('password', 'password must be atleast 5 characters').isLength({ min: 5 })
 ], async (req, res) => {
+  let success = false;
   // If there are errors, return bad request and the errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    return res.status(400).json({ success, errors: errors.array() });
   }
   // check whether the user with this email exists already
   try {
     let user = await User.findOne({ email: req.body.email });
     if (user) {
-      return res.status(400).json({ error: "Sorry a user with this email already exists" })
+      return res.status(400).json({ success, error: "Sorry a user with this email already exists" })
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -47,7 +48,8 @@ router.post('/createuser', [
     // res.json({error:'plase enter a unique value for email',message:err.message})})
 
     // res.json(user)
-    res.json({ authtoken })
+    success = true;
+    res.json({ success, authtoken })
 
   } catch (error) {
     console.error(error.message);
@@ -72,13 +74,13 @@ router.post('/login', [
   try {
     let user = await User.findOne({ email });
     if (!user) {
-      let success = false;
-      return res.status(400).json({ error: "plase try to login with correct credential" });
+      success = false;
+      return res.status(400).json({ success, error: "plase try to login with correct credential" });
     }
     const passwordCompare = await bcrypt.compare(password, user.password);
     if (!passwordCompare) {
-      success = false
-      return res.status(400).json({ error: "plase try to login with correct credential" });
+      success = false;
+      return res.status(400).json({ success, error: "plase try to login with correct credential" });
     }
     const data = {
       user: {
@@ -86,7 +88,7 @@ router.post('/login', [
       }
     }
     const authtoken = jwt.sign(data, JWT_SECRET);
-    let success = true;
+    success = true;
     res.json({ success, authtoken })
 
   } catch (error) {
@@ -96,7 +98,7 @@ router.post('/login', [
 })
 
 //ROUTE 3: Get logged in user Datails using: POST "/api/auth/getuser" . login required
-router.post('/getuser', fetchuser,async (req, res) => {
+router.post('/getuser', fetchuser, async (req, res) => {
   try {
     userId = req.user.id;
     const user = await User.findById(userId).select("-password");
